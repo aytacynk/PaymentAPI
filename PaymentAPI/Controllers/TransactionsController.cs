@@ -27,7 +27,7 @@ namespace PaymentAPI.Controllers
             var bank = GetBankOrDefault(transaction.BankId);
             if (bank == null)
             {
-                return NotFound();
+                return NotFound("Banka bulunamadı");
             }
 
             try
@@ -57,7 +57,7 @@ namespace PaymentAPI.Controllers
             var bank = GetBankOrDefault(transaction.BankId);
             if (bank == null)
             {
-                return NotFound();
+                return NotFound("Banka bulunamadı");
             }
 
             // İlgili işlemi veritabanında bulma işlemi
@@ -65,7 +65,7 @@ namespace PaymentAPI.Controllers
 
             if (existingTransaction == null)
             {
-                return NotFound(); // İşlem bulunamazsa
+                return NotFound("Transaction bulunamadı"); // İşlem bulunamazsa
             }
 
             try
@@ -91,7 +91,7 @@ namespace PaymentAPI.Controllers
             var bank = GetBankOrDefault(transaction.BankId);
             if (bank == null)
             {
-                return NotFound();
+                return NotFound(transaction);
             }
 
             // İlgili işlemi veritabanında bul
@@ -99,7 +99,7 @@ namespace PaymentAPI.Controllers
 
             if (existingTransaction == null)
             {
-                return NotFound(); // İşlem bulunamazsa
+                return NotFound("Transaction bulunamadı"); // İşlem bulunamazsa
             }
 
             try
