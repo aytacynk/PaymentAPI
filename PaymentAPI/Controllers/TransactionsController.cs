@@ -167,10 +167,9 @@ namespace PaymentAPI.Controllers
         private async Task<Transaction> GetTransactionByIdAsync(Guid transactionId)
         {
             return await _paymentContext.Transactions
+                .Include(t => t.TransactionDetails) // TransactionDetails'ı dahil eder
                 .FirstOrDefaultAsync(t => t.Id == transactionId);
         }
-
-
 
     }
 }
