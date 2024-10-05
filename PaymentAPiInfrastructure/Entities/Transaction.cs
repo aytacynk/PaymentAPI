@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static PaymentAPiInfrastructure.Enum.Enum;
 
 namespace PaymentAPiInfrastructure.Entities
 {
@@ -10,9 +11,9 @@ namespace PaymentAPiInfrastructure.Entities
     {
         public Guid Id { get; set; }
         public int BankId { get; set; }
-        public decimal TotalAmount { get; set; }
-        public decimal NetAmount { get; set; }
-        public string Status { get; set; }
+        public decimal? TotalAmount { get; set; }
+        public decimal? NetAmount { get; set; }
+        public StatusOptions Status { get; set; }
         public string OrderReference { get; set; }
         public DateTime TransactionDate { get; set; }
         public ICollection<TransactionDetail> TransactionDetails { get; set; }

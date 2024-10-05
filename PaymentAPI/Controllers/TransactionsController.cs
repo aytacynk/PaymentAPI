@@ -5,6 +5,7 @@ using PaymentAPI.Models;
 using PaymentAPiInfrastructure;
 using PaymentAPiInfrastructure.Contract;
 using PaymentAPiInfrastructure.Entities;
+using static PaymentAPiInfrastructure.Enum.Enum;
 
 namespace PaymentAPI.Controllers
 {
@@ -19,81 +20,135 @@ namespace PaymentAPI.Controllers
             _paymentContext = context;
         }
 
+        // Yeni Bir Ödeme Ekleme İşlemi
         [HttpPost("pay")]
         public async Task<IActionResult> Pay([FromBody] Transaction transaction)
         {
-            var bank = BankFactory.GetBank(transaction.BankId);
-
+            var bank = GetBankOrDefault(transaction.BankId);
             if (bank == null)
             {
                 return NotFound();
             }
 
-            bank.Pay(transaction);
-            await _paymentContext.Transactions.AddAsync(transaction);
-            await _paymentContext.SaveChangesAsync();
-            return Ok(transaction);
+            try
+            {
+                // Bankanın Pay metodunu çağır
+                bank.Pay(transaction);
+
+                // Veritabanına ekle
+
+                await _paymentContext.Transactions.AddAsync(transaction);
+                await _paymentContext.SaveChangesAsync();
+
+                return Ok(transaction);
+
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message); // Hatalı durum için uygun bir yanıt döner
+
+            }
         }
 
+        // İptal Etme İşlemi
         [HttpPost("cancel")]
         public async Task<IActionResult> Cancel([FromBody] Transaction transaction)
         {
             var bank = GetBankOrDefault(transaction.BankId);
-
             if (bank == null)
             {
                 return NotFound();
             }
 
-            bank.Cancel(transaction);
-            _paymentContext.Transactions.Update(transaction);
-            await _paymentContext.SaveChangesAsync();
-            return Ok(transaction);
+            // İlgili işlemi veritabanında bulma işlemi
+            var existingTransaction = await GetTransactionByIdAsync(transaction.Id);
+
+            if (existingTransaction == null)
+            {
+                return NotFound(); // İşlem bulunamazsa
+            }
+
+            try
+            {
+                // İptal işlemini gerçekleştir kurala göre kontrol edilir
+                bank.Cancel(existingTransaction);
+
+                _paymentContext.Transactions.Update(existingTransaction);
+                await _paymentContext.SaveChangesAsync();
+
+                return Ok(existingTransaction);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message); // Hatalı durum için uygun bir yanıt döner
+            }
         }
 
+        // Geri Ödeme İşlemi
         [HttpPost("refund")]
         public async Task<IActionResult> Refund([FromBody] Transaction transaction)
         {
             var bank = GetBankOrDefault(transaction.BankId);
-
             if (bank == null)
             {
                 return NotFound();
             }
 
-            bank.Refund(transaction);
+            // İlgili işlemi veritabanında bul
+            var existingTransaction = await GetTransactionByIdAsync(transaction.Id);
 
-            _paymentContext.Transactions.Update(transaction);
-            await _paymentContext.SaveChangesAsync();
+            if (existingTransaction == null)
+            {
+                return NotFound(); // İşlem bulunamazsa
+            }
 
-            return Ok(transaction);
+            try
+            {
+                // İade işlemini gerçekleştir kurala göre kontrol edilir
+                bank.Refund(existingTransaction);
+
+                _paymentContext.Transactions.Update(existingTransaction);
+                await _paymentContext.SaveChangesAsync();
+
+                return Ok(existingTransaction);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message); // Hatalı durum için uygun bir yanıt döner
+            }
         }
 
+        // Raporlama İşlemi
         [HttpGet("report")]
         public async Task<IActionResult> Report([FromQuery] ReportFilter filter)
         {
             var query = _paymentContext.Transactions.AsQueryable();
 
+            // Banka ID'sine göre filtreleme
             if (filter.BankId.HasValue)
             {
                 query = query.Where(t => t.BankId == filter.BankId.Value);
             }
 
-            if (!string.IsNullOrEmpty(filter.Status))
+            // İşlem durumuna göre filtreleme (Success, Fail)
+            if (filter.Status.HasValue)
             {
-                query = query.Where(t => t.Status == filter.Status);
+                query = query.Where(t => t.Status == filter.Status.Value);
             }
 
+            // Sipariş referansına göre filtreleme
             if (!string.IsNullOrEmpty(filter.OrderReference))
             {
                 query = query.Where(t => t.OrderReference == filter.OrderReference);
             }
 
+            // Tarih aralığına göre filtreleme
             if (filter.StartDate.HasValue)
             {
                 query = query.Where(t => t.TransactionDate >= filter.StartDate.Value);
             }
 
+            // Son Tarih ve öncesine göregöre filtreleme
             if (filter.EndDate.HasValue)
             {
                 query = query.Where(t => t.TransactionDate <= filter.EndDate.Value);
@@ -108,6 +163,13 @@ namespace PaymentAPI.Controllers
         {
             return BankFactory.GetBank(bankId);
         }
+
+        private async Task<Transaction> GetTransactionByIdAsync(Guid transactionId)
+        {
+            return await _paymentContext.Transactions
+                .FirstOrDefaultAsync(t => t.Id == transactionId);
+        }
+
 
     }
 }
