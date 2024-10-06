@@ -122,7 +122,10 @@ namespace PaymentAPI.Controllers
         [HttpGet("report")]
         public async Task<IActionResult> Report([FromQuery] ReportFilter filter)
         {
-            var query = _paymentContext.Transactions.AsQueryable();
+            var query = _paymentContext.Transactions
+                        .Include(t => t.TransactionDetails)
+                        .AsQueryable()
+                        .AsNoTracking();
 
             // Banka ID'sine göre filtreleme
             if (filter.BankId.HasValue)
